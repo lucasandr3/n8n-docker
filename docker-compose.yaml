@@ -3,8 +3,8 @@ services:
     image: n8nio/n8n:latest
     container_name: n8n-editor
     restart: unless-stopped
-    ports:
-      - 5678:5678
+    expose:
+      - 5678
     networks:
       - n8n-network
     volumes:
@@ -14,13 +14,17 @@ services:
       - redis
     env_file:
       - .env
+    environment:
+      - N8N_HOST=n8n.gestgo.com.br
+      - N8N_PROTOCOL=https
+      - WEBHOOK_URL=https://n8n.gestgo.com.br/
 
   n8n-workers:
     image: n8nio/n8n:latest
     container_name: n8n-workers
     restart: unless-stopped
-    ports:
-      - 5676:5678
+    expose:
+      - 5678
     networks:
       - n8n-network
     volumes:
@@ -30,14 +34,14 @@ services:
       - redis
     env_file:
       - .env
-    command: workers
+    command: worker
 
   n8n-webhooks:
     image: n8nio/n8n:latest
     container_name: n8n-webhooks
     restart: unless-stopped
-    ports:
-      - 5677:5678
+    expose:
+      - 5678
     networks:
       - n8n-network
     volumes:
@@ -47,7 +51,23 @@ services:
       - redis
     env_file:
       - .env
-    command: webhooks
+    command: webhook
+
+  evolution-api:
+    image: evoapicloud/evolution-api:latest
+    container_name: evolution-api
+    restart: unless-stopped
+    expose:
+      - 8080
+    networks:
+      - n8n-network
+    volumes:
+      - ./evolution_instances:/evolution/instances
+    depends_on:
+      - postgres
+      - redis
+    env_file:
+      - .env
 
   postgres:
     image: ankane/pgvector:latest
@@ -55,8 +75,8 @@ services:
     container_name: postgres-n8n
     volumes:
       - ./postgres_data:/var/lib/postgresql/data
-    ports:
-      - 5432:5432
+    expose:
+      - 5432
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -68,12 +88,62 @@ services:
     image: redis:alpine
     restart: always
     container_name: redis-n8n
-    ports:
-      - 6379:6379
+    expose:
+      - 6379
     networks:
       - n8n-network
     volumes:
       - ./redis_data:/data
+    sysctls:
+      - net.core.somaxconn=1024
+
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+    restart: unless-stopped
+    ports:
+      - 9000:9000  # Porta direta para desenvolvimento local (evita problemas de origin)
+    expose:
+      - 9000
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./portainer_data:/data
+    networks:
+      - n8n-network
+    command: -H unix:///var/run/docker.sock --trusted-origins localhost,127.0.0.1,portainer.gestgo.com.br
+    environment:
+      - TRUSTED_ORIGINS=localhost,127.0.0.1,portainer.gestgo.com.br
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx-proxy
+    restart: unless-stopped
+    ports:
+      - 80:80
+      - 443:443
+      - 8081:8081  # N8N local
+      - 8082:8082  # Evolution API local
+      - 8083:8083  # Portainer local
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./nginx/ssl:/etc/nginx/ssl
+      - ./nginx/certbot/conf:/etc/letsencrypt
+      - ./nginx/certbot/www:/var/www/certbot
+    networks:
+      - n8n-network
+    depends_on:
+      - n8n-editor
+      - evolution-api
+      - portainer
+    command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
+
+  certbot:
+    image: certbot/certbot:latest
+    container_name: certbot
+    volumes:
+      - ./nginx/certbot/conf:/etc/letsencrypt
+      - ./nginx/certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
 
 networks:
   n8n-network:
