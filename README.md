@@ -1,6 +1,6 @@
-# N8N Docker Setup com Evolution API e Portainer
+# N8N Docker Setup com Evolution API, Portainer e Múltiplas APIs Laravel
 
-Stack completa com N8N, Evolution API, Portainer, PostgreSQL, Redis e Nginx com SSL.
+Stack completa com N8N, Evolution API, Portainer, múltiplas APIs Laravel (cada uma com seu subdomínio e banco), PostgreSQL, Redis e Nginx com SSL.
 
 ## 🚀 Serviços
 
@@ -8,11 +8,13 @@ Stack completa com N8N, Evolution API, Portainer, PostgreSQL, Redis e Nginx com 
 - **N8N Editor**: `https://n8n.gestgo.com.br`
 - **Evolution API**: `https://evolution.gestgo.com.br`
 - **Portainer**: `https://portainer.gestgo.com.br`
+- **APIs Laravel**: Cada API tem seu próprio subdomínio (ex: `https://vendas.gestgo.com.br`)
 
 ### Desenvolvimento Local
 - **N8N Editor**: `http://localhost:8081`
 - **Evolution API**: `http://localhost:8082`
 - **Portainer**: `http://localhost:9000` (acesso direto) ou `http://localhost:8083` (via proxy)
+- **APIs Laravel**: Cada API tem sua própria porta local (configurada ao adicionar)
 
 ## 📋 Pré-requisitos
 
@@ -22,6 +24,7 @@ Stack completa com N8N, Evolution API, Portainer, PostgreSQL, Redis e Nginx com 
    - `n8n.gestgo.com.br` → IP da VPS
    - `evolution.gestgo.com.br` → IP da VPS
    - `portainer.gestgo.com.br` → IP da VPS
+   - Para cada API Laravel, configure o subdomínio correspondente (ex: `vendas.gestgo.com.br`)
 
 ## 🔧 Instalação
 
@@ -39,32 +42,43 @@ Para testar localmente, não é necessário configurar DNS ou SSL:
    - Evolution API: http://localhost:8082
    - Portainer: http://localhost:9000 (recomendado - acesso direto, evita problemas de origin)
    - Portainer (via proxy): http://localhost:8083
+   - APIs Laravel: Cada API terá sua própria porta (configurada ao adicionar)
 
 ### Produção (VPS)
 
 1. **Clone ou copie os arquivos para a VPS**
 
-2. **Configure o arquivo `.env`** com as variáveis necessárias:
-   ```bash
-   # Evolution API
-   DATABASE_ENABLED=true
-   DATABASE_PROVIDER=postgresql
-   DATABASE_CONNECTION_URI=postgresql://postgres:postgres@postgres-n8n:5432/evolution?schema=public
-   CACHE_REDIS_URI=redis://redis-n8n:6379/0
-   AUTHENTICATION_API_KEY=sua-chave-aqui
-   ```
+2. **Configure o arquivo `.env`** com as variáveis necessárias (veja `.env-example`)
 
-3. **Crie o banco de dados Evolution** (se ainda não existir):
+3. **Crie os bancos de dados** (se ainda não existirem):
    ```bash
+   # Banco para Evolution API
    docker exec postgres-n8n psql -U postgres -c "CREATE DATABASE evolution;"
    ```
 
-4. **Inicie os serviços**:
+4. **Adicione suas APIs Laravel** usando o script helper:
+   ```bash
+   ./scripts/add-api.sh <nome-api> <subdominio> <porta-local>
+   ```
+   
+   Exemplo:
+   ```bash
+   ./scripts/add-api.sh vendas vendas 8085
+   ```
+   
+   Isso criará a estrutura necessária. Depois:
+   - Coloque seu projeto Laravel em `apis/<nome-api>/app/`
+   - Configure o `.env` do Laravel com as credenciais do PostgreSQL
+   - Crie o banco de dados: `docker exec postgres-n8n psql -U postgres -c "CREATE DATABASE <nome_api>;"`
+   
+   Veja mais detalhes em `apis/README.md`
+
+5. **Inicie os serviços**:
    ```bash
    make up
    ```
 
-5. **Configure os certificados SSL**:
+6. **Configure os certificados SSL**:
    ```bash
    make ssl-init
    ```
@@ -108,6 +122,7 @@ Certifique-se de que os seguintes registros estão configurados:
 - **Tipo A**: `n8n` → IP da VPS
 - **Tipo A**: `evolution` → IP da VPS  
 - **Tipo A**: `portainer` → IP da VPS
+- **Tipo A**: Para cada API Laravel, configure o subdomínio (ex: `vendas` → IP da VPS)
 
 Ou use um registro CNAME se preferir.
 
@@ -132,7 +147,16 @@ Ou use um registro CNAME se preferir.
 ├── postgres_data/
 ├── redis_data/
 ├── evolution_instances/
-└── portainer_data/
+├── portainer_data/
+├── apis/             # Múltiplas APIs Laravel
+│   ├── template/     # Templates para criar novas APIs
+│   ├── api1/         # Exemplo: primeira API
+│   │   ├── app/      # Código Laravel
+│   │   ├── Dockerfile
+│   │   └── php.ini
+│   └── ...
+└── scripts/
+    └── add-api.sh    # Script para adicionar novas APIs
 ```
 
 ## 🔄 Renovação de Certificados

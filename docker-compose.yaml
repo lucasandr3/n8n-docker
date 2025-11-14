@@ -145,6 +145,14 @@ services:
       - ./nginx/certbot/www:/var/www/certbot
     entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
 
+  # APIs Laravel serão adicionadas aqui usando o script add-api.sh
+  # Exemplo de estrutura:
+  # laravel-api1:
+  #   build:
+  #     context: ./apis/api1
+  #     dockerfile: Dockerfile
+  #   ...
+
 networks:
   n8n-network:
     driver: bridge

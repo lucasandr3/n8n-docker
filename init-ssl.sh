@@ -7,6 +7,7 @@ DOMAINS=(
     "n8n.gestgo.com.br"
     "evolution.gestgo.com.br"
     "portainer.gestgo.com.br"
+    # APIs Laravel serão adicionadas automaticamente pelo script add-api.sh
 )
 
 EMAIL="${CERTBOT_EMAIL:-seu-email@gestgo.com.br}"
@@ -67,6 +68,12 @@ if [ -f "nginx/certbot/conf/live/n8n.gestgo.com.br/fullchain.pem" ]; then
     cp nginx/conf.d/n8n.conf.ssl nginx/conf.d/n8n.conf
     cp nginx/conf.d/evolution.conf.ssl nginx/conf.d/evolution.conf
     cp nginx/conf.d/portainer.conf.ssl nginx/conf.d/portainer.conf
+    # APIs Laravel: copiar todos os .conf.ssl para .conf
+    for conf in nginx/conf.d/*.conf.ssl; do
+        if [ -f "$conf" ] && [[ "$conf" != *"n8n.conf.ssl" ]] && [[ "$conf" != *"evolution.conf.ssl" ]] && [[ "$conf" != *"portainer.conf.ssl" ]]; then
+            cp "$conf" "${conf%.ssl}" 2>/dev/null || true
+        fi
+    done
     
     echo "🔄 Reiniciando nginx com certificados SSL..."
     docker compose restart nginx
@@ -76,6 +83,7 @@ if [ -f "nginx/certbot/conf/live/n8n.gestgo.com.br/fullchain.pem" ]; then
     echo "   - https://n8n.gestgo.com.br"
     echo "   - https://evolution.gestgo.com.br"
     echo "   - https://portainer.gestgo.com.br"
+    # APIs Laravel serão listadas automaticamente se existirem
 else
     echo "⚠️  Alguns certificados não foram gerados. Verifique os logs acima."
     echo "   Os serviços continuarão funcionando via HTTP até os certificados serem gerados."

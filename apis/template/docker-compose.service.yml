@@ -1,0 +1,22 @@
+  # Serviço Laravel - {API_NAME}
+  laravel-{API_NAME}:
+    build:
+      context: ./apis/{API_NAME}
+      dockerfile: Dockerfile
+    container_name: laravel-{API_NAME}
+    restart: unless-stopped
+    expose:
+      - 9000
+    networks:
+      - n8n-network
+    volumes:
+      - ./apis/{API_NAME}/app:/var/www/html
+      - ./apis/{API_NAME}/php.ini:/usr/local/etc/php/conf.d/custom.ini
+    depends_on:
+      - postgres
+      - redis
+    env_file:
+      - .env
+    working_dir: /var/www/html
+    command: php-fpm
+

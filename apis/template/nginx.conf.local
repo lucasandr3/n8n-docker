@@ -1,0 +1,30 @@
+# Configuração local para desenvolvimento
+server {
+    listen {LOCAL_PORT};
+    server_name localhost;
+
+    root /var/www/html/{API_NAME}/public;
+    index index.php;
+
+    charset utf-8;
+
+    client_max_body_size 50M;
+    
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        fastcgi_pass {CONTAINER_NAME}:9000;
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        include fastcgi_params;
+        fastcgi_hide_header X-Powered-By;
+        fastcgi_read_timeout 300;
+        fastcgi_connect_timeout 75;
+    }
+
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+}
+
