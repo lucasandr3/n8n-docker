@@ -1,0 +1,76 @@
+# HTTP - Redirect to HTTPS
+server {
+    listen 80;
+    server_name gestgo.com.br www.gestgo.com.br;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# HTTPS - Site Institucional
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name gestgo.com.br www.gestgo.com.br;
+
+    ssl_certificate /etc/letsencrypt/live/gestgo.com.br/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/gestgo.com.br/privkey.pem;
+    
+    # SSL Configuration
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers on;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 10m;
+
+    # Security Headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+
+    # Para Angular/React/Vue: servir do diretório dist/
+    # Para HTML estático: servir diretamente do diretório
+    charset utf-8;
+    client_max_body_size 50M;
+    
+    # Servir arquivos estáticos
+    # O script de deploy copia o build do Angular/React/Vue para a raiz
+    # Então sempre servimos da raiz (funciona para HTML estático e builds)
+    root /var/www/html/institucional;
+    index index.html;
+    
+    location / {
+        # Servir arquivos da raiz (build copiado ou HTML estático)
+        try_files $uri $uri/ /index.html;
+    }
+    
+    # Cache para assets estáticos (JS, CSS, imagens)
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        try_files $uri =404;
+    }
+
+    # Se for Laravel, descomente abaixo e comente o bloco acima
+    # location / {
+    #     try_files $uri $uri/ /index.php?$query_string;
+    # }
+    # 
+    # location ~ \.php$ {
+    #     fastcgi_pass laravel-institucional:9000;
+    #     fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+    #     include fastcgi_params;
+    #     fastcgi_hide_header X-Powered-By;
+    #     fastcgi_read_timeout 300;
+    #     fastcgi_connect_timeout 75;
+    # }
+
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+}

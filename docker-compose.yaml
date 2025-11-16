@@ -14,10 +14,6 @@ services:
       - redis
     env_file:
       - .env
-    environment:
-      - N8N_HOST=n8n.gestgo.com.br
-      - N8N_PROTOCOL=https
-      - WEBHOOK_URL=https://n8n.gestgo.com.br/
 
   n8n-workers:
     image: n8nio/n8n:latest
@@ -75,12 +71,14 @@ services:
     container_name: postgres-n8n
     volumes:
       - ./postgres_data:/var/lib/postgresql/data
+    ports:
+      - 5432:5432  # Mapeado para acesso externo (DBeaver, etc)
     expose:
       - 5432
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: postgres
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
     networks:
       - n8n-network
 
@@ -124,11 +122,13 @@ services:
       - 8081:8081  # N8N local
       - 8082:8082  # Evolution API local
       - 8083:8083  # Portainer local
+      - 8087:8087  # Webhook handler local
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d
       - ./nginx/ssl:/etc/nginx/ssl
       - ./nginx/certbot/conf:/etc/letsencrypt
       - ./nginx/certbot/www:/var/www/certbot
+      - ./institucional:/var/www/html/institucional:ro
     networks:
       - n8n-network
     depends_on:
@@ -144,6 +144,25 @@ services:
       - ./nginx/certbot/conf:/etc/letsencrypt
       - ./nginx/certbot/www:/var/www/certbot
     entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+
+  webhook-handler:
+    build:
+      context: ./webhook-handler
+      dockerfile: Dockerfile
+    container_name: webhook-deploy-handler
+    restart: unless-stopped
+    expose:
+      - 3000
+    networks:
+      - n8n-network
+    volumes:
+      - .:/workspace:rw
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    working_dir: /workspace
+    environment:
+      - WEBHOOK_SECRET=${WEBHOOK_SECRET:-}
+    depends_on:
+      - nginx
 
   # APIs Laravel serão adicionadas aqui usando o script add-api.sh
   # Exemplo de estrutura:

@@ -1,0 +1,16 @@
+{
+  "name": "webhook-deploy-handler",
+  "version": "1.0.0",
+  "description": "Webhook handler para deploy automático via Git",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
+

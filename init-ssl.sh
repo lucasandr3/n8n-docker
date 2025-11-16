@@ -4,9 +4,12 @@
 # Execute este script apenas na primeira vez ou quando precisar renovar os certificados
 
 DOMAINS=(
+    "gestgo.com.br"
+    "www.gestgo.com.br"
     "n8n.gestgo.com.br"
     "evolution.gestgo.com.br"
     "portainer.gestgo.com.br"
+    "webhook.gestgo.com.br"
     # APIs Laravel serão adicionadas automaticamente pelo script add-api.sh
 )
 
@@ -65,12 +68,14 @@ echo "📝 Atualizando configurações do Nginx com SSL..."
 # Verificar se os certificados foram gerados e atualizar configurações
 if [ -f "nginx/certbot/conf/live/n8n.gestgo.com.br/fullchain.pem" ]; then
     echo "✅ Certificados encontrados, aplicando configurações SSL..."
+    cp nginx/conf.d/main.conf.ssl nginx/conf.d/main.conf
     cp nginx/conf.d/n8n.conf.ssl nginx/conf.d/n8n.conf
     cp nginx/conf.d/evolution.conf.ssl nginx/conf.d/evolution.conf
     cp nginx/conf.d/portainer.conf.ssl nginx/conf.d/portainer.conf
+    cp nginx/conf.d/webhook.conf.ssl nginx/conf.d/webhook.conf
     # APIs Laravel: copiar todos os .conf.ssl para .conf
     for conf in nginx/conf.d/*.conf.ssl; do
-        if [ -f "$conf" ] && [[ "$conf" != *"n8n.conf.ssl" ]] && [[ "$conf" != *"evolution.conf.ssl" ]] && [[ "$conf" != *"portainer.conf.ssl" ]]; then
+        if [ -f "$conf" ] && [[ "$conf" != *"main.conf.ssl" ]] && [[ "$conf" != *"n8n.conf.ssl" ]] && [[ "$conf" != *"evolution.conf.ssl" ]] && [[ "$conf" != *"portainer.conf.ssl" ]] && [[ "$conf" != *"webhook.conf.ssl" ]]; then
             cp "$conf" "${conf%.ssl}" 2>/dev/null || true
         fi
     done
